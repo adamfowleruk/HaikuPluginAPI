@@ -14,7 +14,7 @@ class BEntry;
 struct plugin
 {
 	entry_ref path;
-	std::shared_ptr<plugin_descriptor> description;
+	plugin_descriptor description;
 };
 
 // NB Uses the PIMPL idiom to maximise compatibility across API versions
@@ -26,9 +26,9 @@ public:
 	virtual								~PluginManager();
 	// TODO move contructor???
 	const 	std::vector<std::string>	FindForProtocol(const char* signature,const char* version);
-			void						SendMessage(const std::string pluginid,BMessage* message);
+			status_t					SendMessage(const std::string pluginid,BMessage* message);
 	const	std::vector<BEntry>			GetAllPluginPaths();
-	const	std::vector<std::shared_ptr<plugin>>			GetAllPlugins();
+	const	std::vector<plugin>			GetAllPlugins();
 	const	std::vector<std::string>	GetProblems();
 	
 	class Impl;

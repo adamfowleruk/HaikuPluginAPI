@@ -10,6 +10,7 @@
 #include <cstring>
 #include <string>
 #include <iterator>
+#include <iostream>
 
 // IMPLEMENT OUR HAIKU MANAGER CLASS FROM OUR HEADER FILE
 
@@ -53,7 +54,7 @@ PoemManager::GetRandom()
 }
 
 const char*	
-PoemManager::AtIndex(int32 idx)
+PoemManager::AtIndex(uint32 idx)
 {
 	if (idx > poems.size() - 1)
 		return nullptr;
@@ -61,13 +62,13 @@ PoemManager::AtIndex(int32 idx)
 	return poems.at(idx).c_str();
 }
 
-const int32	
+const uint32	
 PoemManager::Count()
 {
 	return poems.size();
 }
 
-const int32	
+const uint32	
 PoemManager::AddPoem(const char* poem)
 {
 	poems.emplace_back(poem);
@@ -124,14 +125,18 @@ extern "C"
 plugin_descriptor
 describe_plugin()
 {
-	const struct protocol hp = {sig_haikuprotocol, "1.1","1.0","1.1"};
-	const struct protocol lp = {sig_limerickprotocol, "1.0","1.0","1.0"};
-	static const struct protocol protocols[] = {hp,lp};
+	//const struct protocol hp = {sig_haikuprotocol, "1.1","1.0","1.1"};
+	//const struct protocol lp = {sig_limerickprotocol, "1.0","1.0","1.0"};
+	static const struct protocol protocols[] = {
+		{sig_haikuprotocol, "1.1","1.0","1.1"},{sig_limerickprotocol, "1.0","1.0","1.0"}
+	};
 	const struct plugin_descriptor description = {
 		signature,"Operations on Poems","1.1",
 		2,
 		protocols
 	};
+	std::cout << "first protocol from prot array: " << protocols[0].signature << std::endl;
+	std::cout << "first protocol from description: " << description.protocolList[0].signature << std::endl;
 	return description;
 }
 

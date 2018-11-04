@@ -20,9 +20,12 @@ public:
 			bool		QuitRequested(void);
 			
 private:
+			void		EnsureLinked(void);
+			
 			PluginManager	fPluginManager;
-			const std::vector<std::string>	fHaikuPlugins;
-			const std::vector<std::string>	fLimerickPlugins;
+			bool		fInitialised;
+			std::vector<std::string>	fHaikuPlugins;
+			std::vector<std::string>	fLimerickPlugins;
 			BTextView*	fStringView;
 };
 

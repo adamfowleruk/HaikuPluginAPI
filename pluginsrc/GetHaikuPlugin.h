@@ -31,9 +31,9 @@ public:
 				void						MessageReceived(BMessage* message);
 private:
 				const char*					GetRandom();
-				const char*					AtIndex(int32 idx);
-				const int32					Count();
-				const int32					AddPoem(const char* poem);
+				const char*					AtIndex(uint32 idx);
+				const uint32				Count();
+				const uint32				AddPoem(const char* poem);
 				
 				std::vector<std::string> 	poems;
 };

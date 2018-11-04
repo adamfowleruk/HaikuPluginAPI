@@ -28,14 +28,14 @@ public:
 	virtual								~Impl();
 	
 	const 	std::vector<std::string>	FindForProtocol(const char* signature,const char* version);
-			void						SendMessage(const std::string pluginsig, BMessage* message);
+			status_t					SendMessage(const std::string pluginsig, BMessage* message);
 			void						AddDescription(entry_ref path, plugin_descriptor* desc);
 	const	std::vector<BEntry>			GetAllPluginPaths();
-	const	std::vector<std::shared_ptr<plugin>>			GetAllPlugins();
+	const	std::vector<plugin>			GetAllPlugins();
 	const	std::vector<std::string>	GetProblems();
 			void						AddProblem(std::string problem);
 private:
-			std::vector<std::shared_ptr<plugin>>			plugins;
+			std::vector<plugin>			plugins;
 			std::vector<std::string>	problems;
 			std::vector<BEntry> 		fPluginPaths;
 };
@@ -65,14 +65,19 @@ IntrospectThread(entry_ref addonRef, PluginManager::Impl* pluginManager)
 				// call add-on code
 				plugin_descriptor description = 
 					(*describe_plugin)(NULL);
-				PRINT(("plugin signature: %s\n",description.signature));
-				std::cout << "plugin signature: " << description.signature << std::endl;
+				PRINT(("IntrospectThread: plugin signature: %s\n",description.signature));
+				std::cout << "IntrospectThread: plugin signature: " << description.signature << std::endl;
+				
+				// print out first protocol too
+				std::cout << "IntrospectThread:   first protocol sig: " << description.protocolList[0].signature << std::endl;
+				
 				pluginManager->AddDescription(addonRef,&description);
+				
 
 				unload_add_on(addonImage);
 				return B_OK;
 			} else
-				PRINT(("couldn't find describe_plugin\n"));
+				PRINT(("IntrospectThread: couldn't find describe_plugin\n"));
 
 			unload_add_on(addonImage);
 		} else
@@ -113,7 +118,7 @@ PluginManager::Impl::Impl(std::vector<std::string> additionalPaths)
 	std::cout << "Impl(paths)" << std::endl;
 	for (auto ap: additionalPaths)
 	{
-		std::cout << "Path: " << ap << std::endl;
+		std::cout << "Impl(paths): Path: " << ap << std::endl;
 		BEntry entry(ap.c_str());
 		// check if its a file or folder, and process accordingly
 		// TODO folder later, single files for now
@@ -125,7 +130,7 @@ PluginManager::Impl::Impl(std::vector<std::string> additionalPaths)
 	
 	for (auto entry: fPluginPaths)
 	{
-		std::cout << "Processing path" << std::endl;
+		std::cout << "Impl(paths): Processing path" << std::endl;
 		entry_ref ref;
 		entry.GetRef(&ref);
 		DescribePlugin(ref,this);
@@ -183,36 +188,39 @@ PluginManager::Impl::FindForProtocol(const char* signature,const char* version)
 			// add to vector if name and versions match
 			// return vector (move semantics)
 			// TODO for now just add everything with same protocol
-			for (int prot = 0;prot < plugin->description->count;prot++) 
+			for (int prot = 0;prot < plugin.description.count;prot++) 
 			{
-				const protocol* protocol = &(plugin->description->protocolList[prot]);
+				const protocol* protocol = &(plugin.description.protocolList[prot]);
 				if (0 == strcmp(protocol->signature, signature))
 				{
-					matches.emplace_back(plugin->description->signature);
+					matches.emplace_back(plugin.description.signature);
 				}
 			}
 		}
 		return std::move(matches);
 	}
 	
-void
+status_t
 PluginManager::Impl::SendMessage(const std::string pluginsig, BMessage* message)
 {
+	std::cout << "Impl::SendMessage()" << std::endl;
 	// Call its SendMessage function
 	for (auto plugin: plugins)
 	{
-		if (0 == strcmp(plugin->description->signature, pluginsig.c_str()))
+		if (0 == strcmp(plugin.description.signature, pluginsig.c_str()))
 		{
-			MessagePlugin(plugin->path, this);
-			return;
+			std::cout << "Impl::SendMessage():   matching plugin for protocol" << std::endl;
+			return MessagePlugin(plugin.path, this);
 		}
 	}
+	return B_BAD_PORT_ID;
 }
 	
 // internal methods
 void
 PluginManager::Impl::AddDescription(entry_ref path, plugin_descriptor* desc)
 {
+	std::cout << "Impl::AddDescription()" << std::endl;
 	std::string sig(desc->signature);
 	std::string summary(desc->summary);
 	std::string version(desc->version);
@@ -225,11 +233,12 @@ PluginManager::Impl::AddDescription(entry_ref path, plugin_descriptor* desc)
 	strcpy(version,desc->version);
 	*/
 	
-	int size = desc->count;
+	const int size = desc->count;
 	
-	struct protocol protocolList[size];
+	struct protocol* protocolList = new protocol[size];
 	for (int i = 0;i < desc->count;i++) 
 	{
+	/*
 		char* psig = nullptr;
 		char* pver = nullptr;
 		char* pminver = nullptr;
@@ -238,11 +247,24 @@ PluginManager::Impl::AddDescription(entry_ref path, plugin_descriptor* desc)
 		strcpy(pver,protocolList[i].version);
 		strcpy(pminver,protocolList[i].minVersion);
 		strcpy(pmaxver,protocolList[i].maxVersion);
+		*/
+		protocolList[i].signature = strdup(desc->protocolList[i].signature);
+		protocolList[i].version = strdup(desc->protocolList[i].version);
+		protocolList[i].minVersion = strdup(desc->protocolList[i].minVersion);
+		protocolList[i].maxVersion = strdup(desc->protocolList[i].maxVersion);
+		std::cout << "Impl::AddDescription:   protocol sig: " << protocolList[i].signature << std::endl;
 	}
 	
-	struct plugin_descriptor* mypd = new plugin_descriptor(sig.c_str(),summary.c_str(),version.c_str(),desc->count,protocolList);
-	
-	std::cout << "summary: " << mypd->summary << std::endl;
+	/*
+	struct plugin_descriptor* mypd = new plugin_descriptor(sig.c_str(),summary.c_str(),version.c_str(),
+		&(const int)(size),&protocolList);
+		*/
+	// done a deep copy, so a shallow copy now will work find
+	struct plugin_descriptor mypd = {sig.c_str(),summary.c_str(),version.c_str(),
+		size,protocolList};
+	std::cout << "Imple::AddDescription: summary: " << mypd.summary << std::endl;
+	struct plugin plug = {path,mypd};
+	plugins.emplace_back(plug); // shallow copy now fine, as we've allocated everything in our memory space
 /*	
 	const int* count = new int(desc->count);
 	std::shared_ptr<struct plugin_descriptor> d = std::make_shared<struct plugin_descriptor>(
@@ -260,7 +282,7 @@ PluginManager::Impl::GetAllPluginPaths()
 }
 
 const
-std::vector<std::shared_ptr<plugin>>
+std::vector<plugin>
 PluginManager::Impl::GetAllPlugins()
 {
 	return plugins; // forces copy constructor
@@ -303,7 +325,7 @@ PluginManager::GetAllPluginPaths()
 	return fImpl->GetAllPluginPaths();
 }
 
-const std::vector<std::shared_ptr<plugin>>
+const std::vector<plugin>
 PluginManager::GetAllPlugins()
 {
 	return fImpl->GetAllPlugins();
@@ -315,10 +337,10 @@ PluginManager::FindForProtocol(const char* signature,const char* version)
 	return fImpl->FindForProtocol(signature,version);
 }
 
-void
+status_t
 PluginManager::SendMessage(const std::string pluginid,BMessage* message)
 {
-	fImpl->SendMessage(pluginid,message);
+	return fImpl->SendMessage(pluginid,message);
 }
 
 const std::vector<std::string>

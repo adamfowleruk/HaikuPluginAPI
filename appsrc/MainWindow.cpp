@@ -23,8 +23,9 @@ MainWindow::MainWindow(void)
 	,fPluginManager(std::vector<std::string> {
 		"/boot/system/non-packaged/add-ons/MessagePlugins/GetHaikuPlugin"
 	} ) // goes and finds all protocols in the libs folder
-	,fHaikuPlugins(fPluginManager.FindForProtocol(sig_haikuprotocol,"1.0"))
-	,fLimerickPlugins(fPluginManager.FindForProtocol(sig_limerickprotocol,"1.0"))
+	,fInitialised(false)
+	,fHaikuPlugins()
+	,fLimerickPlugins()
 {
 	// Normally we'd keep the list, and send introspection messages to each
 	//     For now though, we'll just fetch the first implementation of each
@@ -70,6 +71,8 @@ MainWindow::MessageReceived(BMessage *msg)
 		}
 		case M_LIST:
 		{
+			EnsureLinked();
+			
 			BString pluginInfo;
 			auto plugins = fPluginManager.GetAllPlugins();
 			pluginInfo << "Total: " << plugins.size() << "\n";
@@ -82,8 +85,7 @@ MainWindow::MessageReceived(BMessage *msg)
 				pluginInfo << "    protocols: " << plugin.description.count << "\n";
 				for (int32 prot = 0;prot < plugin.description.count;prot++)
 				{
-					protocol p = plugin.description.protocolList[prot];
-					pluginInfo << "        " << p.signature << "\n";
+					pluginInfo << "        " << plugin.description.protocolList[prot].signature << "\n";
 				}
 			}
 			fStringView->SetText(pluginInfo);
@@ -92,6 +94,8 @@ MainWindow::MessageReceived(BMessage *msg)
 		}
 		case M_GET_RANDOM_HAIKU:
 		{
+			EnsureLinked();
+			
 			if (0 == fPluginManager.GetAllPlugins().size()) {
 				fStringView->SetText("No plugins in folder!");
 			} else {
@@ -101,6 +105,8 @@ MainWindow::MessageReceived(BMessage *msg)
 		}
 		case M_GET_RANDOM_LIMERICK:
 		{
+			EnsureLinked();
+			
 			if (0 == fPluginManager.GetAllPlugins().size()) {
 				fStringView->SetText("No plugins in folder!");
 			} else {
@@ -137,4 +143,17 @@ MainWindow::QuitRequested(void)
 {
 	be_app->PostMessage(B_QUIT_REQUESTED);
 	return true;
+}
+
+void
+MainWindow::EnsureLinked(void)
+{
+	if (fInitialised)
+		return;
+		
+	// Plugin invocation, including introspection, is ASYNCHRONOUS
+	fHaikuPlugins = fPluginManager.FindForProtocol(sig_haikuprotocol,"1.0");
+	fLimerickPlugins = fPluginManager.FindForProtocol(sig_limerickprotocol,"1.0");
+	
+	fInitialised = true;
 }
