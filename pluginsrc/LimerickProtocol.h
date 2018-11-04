@@ -2,9 +2,9 @@
 #define LIMERICK_PROTOCOL_H
 
 
-const char* sig_limerickprotocol = "x.vnd/LimerickProtocol";
+static const char* sig_limerickprotocol = "x.vnd/LimerickProtocol";
 
-const int32 M_GET_RANDOM_LIMERICK = 'grdl';
+static const int32 M_GET_RANDOM_LIMERICK = 'grdl';
 
 
 #endif

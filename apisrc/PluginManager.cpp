@@ -106,7 +106,7 @@ DescribePlugin(entry_ref addonRef,PluginManager::Impl* pluginManager)
 
 
 static int32
-SendThread(entry_ref addonRef, PluginManager::Impl* pluginManager,const char* protocolSig, BMessage* message)
+SendThread(entry_ref addonRef, PluginManager::Impl* pluginManager,const char* protocolSig, const char* flattenedMessage)
 {
 	std::cout << "Send Thread" << std::endl;
 	BEntry entry(&addonRef);
@@ -118,13 +118,14 @@ SendThread(entry_ref addonRef, PluginManager::Impl* pluginManager,const char* pr
 	if (result == B_OK) {
 		image_id addonImage = load_add_on(path.Path());
 		if (addonImage >= 0) {
-			void (*receive_message)(const char*, BMessage*, void*);
+			void (*receive_message)(const char*, const char*, void*);
 			result = get_image_symbol(addonImage, "receive_message", 2,
 				(void**)&receive_message);
 
 			if (result >= 0) {
+				//std::cout << "SendThread: message what: " << message->what << std::endl;
 				// call add-on code
-					(*receive_message)(protocolSig, message, NULL);
+					(*receive_message)(protocolSig, flattenedMessage, NULL);
 					
 				std::cout << "SendThread: Message Sent" << std::endl;
 
@@ -153,8 +154,13 @@ SendThread(entry_ref addonRef, PluginManager::Impl* pluginManager,const char* pr
 static void
 MessagePlugin(entry_ref addonRef, PluginManager::Impl* pluginManager, const char* protocolSig, BMessage* message)
 {
+	std::cout << "MessagePlugin: what: " << message->what << std::endl;
+	char* flattenedMessage = new char[message->FlattenedSize()];
+	status_t result = message->Flatten(flattenedMessage,message->FlattenedSize());
+	std::string cc(flattenedMessage);
 	LaunchInNewThread("MessagePlugin::SendMessage",B_NORMAL_PRIORITY, 
-		&SendThread, addonRef, pluginManager, protocolSig, message);
+		&SendThread, addonRef, pluginManager, protocolSig, 
+		cc.c_str());
 }
 
 PluginManager::Impl::Impl(std::vector<std::string> additionalPaths)
@@ -248,7 +254,7 @@ PluginManager::Impl::FindForProtocol(const char* signature,const char* version)
 void
 PluginManager::Impl::SendMessage(const std::string pluginsig, const char* protocolSig, BMessage* message)
 {
-	std::cout << "Impl::SendMessage()" << std::endl;
+	std::cout << "Impl::SendMessage(): what: " << message->what << std::endl;
 	// Call its SendMessage function
 	for (auto plugin: plugins)
 	{
@@ -384,6 +390,7 @@ PluginManager::FindForProtocol(const char* signature,const char* version)
 void
 PluginManager::SendMessage(const std::string pluginid,const char* protocolSig,BMessage* message)
 {
+	std::cout << "PluginManager::SendMessage: what: " << message->what << std::endl;
 	fImpl->SendMessage(pluginid,protocolSig,message);
 }
 

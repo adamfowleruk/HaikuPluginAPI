@@ -27,7 +27,9 @@ PoemManager::~PoemManager()
 void
 PoemManager::MessageReceived(BMessage* message)
 {
-	std::cout << "PoemManager::MessageReceived: what: " << message->what << std::endl;
+	std::cout << "GetHaikuPlugin::MessageReceived: what: " << message->what << std::endl;
+	std::cout << "GetHaikuPlugin::MessageReceived: M_GET_RANDOM_HAIKU: " << M_GET_RANDOM_HAIKU << std::endl;
+	std::cout << "GetHaikuPlugin::MessageReceived: M_GET_RANDOM_LIMERICK: " << M_GET_RANDOM_LIMERICK << std::endl;
 	switch(message->what) {
 	case M_GET_RANDOM_HAIKU:
 	case M_GET_RANDOM_LIMERICK:
@@ -36,7 +38,10 @@ PoemManager::MessageReceived(BMessage* message)
 		const char* poem = GetRandom();
 		BMessage* reply = new BMessage(M_RECEIVE);
 		reply->AddString("poem",poem);
+		std::cout << "GetHaikuPlugin::MessageReceived: Sending Poem: " << poem << std::endl;
 		message->SendReply(reply);
+		std::cout << "GetHaikuPlugin::MessageReceived: Message reply sent" << std::endl;
+		
 		break;
 	}
 	case M_ADD_HAIKU:
@@ -143,9 +148,11 @@ describe_plugin()
 
 extern "C"
 void
-receive_message(const char* protocol,BMessage* message) 
+receive_message(const char* protocol,const char* flattenedMessage) 
 {
 	std::cout << "message_received" << std::endl;
+	BMessage* message = new BMessage();
+	message->Unflatten(flattenedMessage);
 	// This is where the plugin would hand off to
 	//    one or more classes, depending on the list of protocols supported and their handlers
 	

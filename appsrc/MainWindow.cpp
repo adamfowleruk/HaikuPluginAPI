@@ -53,6 +53,9 @@ MainWindow::MainWindow(void)
 void
 MainWindow::MessageReceived(BMessage *msg)
 {
+	std::cout << "PoemViewer::MessageReceived: M_RECEIVE: " << M_RECEIVE << std::endl;
+	std::cout << "PoemViewer::MessageReceived: M_GET_RANDOM_HAIKU: " << M_GET_RANDOM_HAIKU << std::endl;
+	std::cout << "PoemViewer::MessageReceived: M_GET_RANDOM_LIMERICK: " << M_GET_RANDOM_LIMERICK << std::endl;
 	std::cout << "PoemViewer::MessageReceived: what: " << msg->what << std::endl;
 	switch (msg->what)
 	{
@@ -100,7 +103,9 @@ MainWindow::MessageReceived(BMessage *msg)
 			if (0 == fPluginManager.GetAllPlugins().size()) {
 				fStringView->SetText("No plugins in folder!");
 			} else {
-				fPluginManager.SendMessage(fHaikuPlugins[0],sig_haikuprotocol, msg);
+				std::cout << "What now: " << msg->what << std::endl;
+				fPluginManager.SendMessage(fHaikuPlugins[0],
+					sig_haikuprotocol, msg);
 			}
 			break;
 		}

@@ -18,7 +18,7 @@ class BMessage;
 
 extern "C" {
 	plugin_descriptor	describe_plugin();
-	void				receive_message(const char* protocol_signature,BMessage* message); // BMessage allows reply built in
+	void				receive_message(const char* protocol_signature,const char* flattenedMessage); // BMessage allows reply built in
 }
 
 #endif
