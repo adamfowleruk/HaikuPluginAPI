@@ -6,7 +6,11 @@
 #include <Window.h>
 #include "../apisrc/PluginManager.h"
 
-class BStringView;
+class BTextView;
+
+const uint32 M_LIST = 'list';
+const uint32 M_PROBLEMS = 'prob';
+const uint32 M_PATHS = 'path';
 
 class MainWindow : public BWindow
 {
@@ -19,7 +23,7 @@ private:
 			PluginManager	fPluginManager;
 			const std::vector<std::string>	fHaikuPlugins;
 			const std::vector<std::string>	fLimerickPlugins;
-			BStringView*	fStringView;
+			BTextView*	fStringView;
 };
 
 #endif
