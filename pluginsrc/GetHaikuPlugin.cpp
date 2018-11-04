@@ -27,6 +27,7 @@ PoemManager::~PoemManager()
 void
 PoemManager::MessageReceived(BMessage* message)
 {
+	std::cout << "PoemManager::MessageReceived: what: " << message->what << std::endl;
 	switch(message->what) {
 	case M_GET_RANDOM_HAIKU:
 	case M_GET_RANDOM_LIMERICK:
@@ -144,16 +145,19 @@ extern "C"
 void
 receive_message(const char* protocol,BMessage* message) 
 {
+	std::cout << "message_received" << std::endl;
 	// This is where the plugin would hand off to
 	//    one or more classes, depending on the list of protocols supported and their handlers
 	
 	if (0 == strcmp(sig_haikuprotocol,protocol))
 	{
+		std::cout << "message_received: Got a haiku request" << std::endl;
 		// we know that the PoemManager instance supports to get random protocol
 		haikus->MessageReceived(message);
 	} else {
 		if (0 == strcmp(sig_limerickprotocol,protocol))
 		{
+			std::cout << "message_received: Got a limerick request" << std::endl;
 			// we know that the LlimerickManager instance supports the add protocol
 			limericks->MessageReceived(message);
 		}

@@ -53,6 +53,7 @@ MainWindow::MainWindow(void)
 void
 MainWindow::MessageReceived(BMessage *msg)
 {
+	std::cout << "PoemViewer::MessageReceived: what: " << msg->what << std::endl;
 	switch (msg->what)
 	{
 		case M_PATHS:
@@ -99,7 +100,7 @@ MainWindow::MessageReceived(BMessage *msg)
 			if (0 == fPluginManager.GetAllPlugins().size()) {
 				fStringView->SetText("No plugins in folder!");
 			} else {
-				fPluginManager.SendMessage(fHaikuPlugins[0],msg);
+				fPluginManager.SendMessage(fHaikuPlugins[0],sig_haikuprotocol, msg);
 			}
 			break;
 		}
@@ -110,7 +111,7 @@ MainWindow::MessageReceived(BMessage *msg)
 			if (0 == fPluginManager.GetAllPlugins().size()) {
 				fStringView->SetText("No plugins in folder!");
 			} else {
-				fPluginManager.SendMessage(fLimerickPlugins[0],msg);
+				fPluginManager.SendMessage(fLimerickPlugins[0],sig_limerickprotocol,msg);
 			}
 			break;
 		}

@@ -28,7 +28,7 @@ public:
 	virtual								~Impl();
 	
 	const 	std::vector<std::string>	FindForProtocol(const char* signature,const char* version);
-			status_t					SendMessage(const std::string pluginsig, BMessage* message);
+			void						SendMessage(const std::string pluginsig, const char* protocolSig, BMessage* message);
 			void						AddDescription(entry_ref path, plugin_descriptor* desc);
 	const	std::vector<BEntry>			GetAllPluginPaths();
 	const	std::vector<plugin>			GetAllPlugins();
@@ -106,10 +106,55 @@ DescribePlugin(entry_ref addonRef,PluginManager::Impl* pluginManager)
 
 
 static int32
-MessagePlugin(entry_ref addonRef, PluginManager::Impl* pluginManager)
+SendThread(entry_ref addonRef, PluginManager::Impl* pluginManager,const char* protocolSig, BMessage* message)
 {
-	// TODO implement
-	return B_OK;
+	std::cout << "Send Thread" << std::endl;
+	BEntry entry(&addonRef);
+	BPath path;
+	status_t result = entry.InitCheck();
+	if (result == B_OK)
+		result = entry.GetPath(&path);
+
+	if (result == B_OK) {
+		image_id addonImage = load_add_on(path.Path());
+		if (addonImage >= 0) {
+			void (*receive_message)(const char*, BMessage*, void*);
+			result = get_image_symbol(addonImage, "receive_message", 2,
+				(void**)&receive_message);
+
+			if (result >= 0) {
+				// call add-on code
+					(*receive_message)(protocolSig, message, NULL);
+					
+				std::cout << "SendThread: Message Sent" << std::endl;
+
+				unload_add_on(addonImage); // TODO ensure it is safe to remove already (and each time?)
+				return B_OK;
+			} else
+				PRINT(("SendThread: couldn't find describe_plugin\n"));
+
+			unload_add_on(addonImage);
+		} else
+			result = addonImage;
+	}
+
+
+	BString buffer("Error %error loading Plugin %name.");
+	buffer.ReplaceFirst("%error", strerror(result));
+	buffer.ReplaceFirst("%name", addonRef.name);
+	
+	// Log the above somewhere useful in the plugin manager for later inspection
+	//     (Otherwise the user would be like "Hey, why isn't that plugin listed?"
+	pluginManager->AddProblem(buffer.String());
+	
+	return result;
+}
+
+static void
+MessagePlugin(entry_ref addonRef, PluginManager::Impl* pluginManager, const char* protocolSig, BMessage* message)
+{
+	LaunchInNewThread("MessagePlugin::SendMessage",B_NORMAL_PRIORITY, 
+		&SendThread, addonRef, pluginManager, protocolSig, message);
 }
 
 PluginManager::Impl::Impl(std::vector<std::string> additionalPaths)
@@ -200,8 +245,8 @@ PluginManager::Impl::FindForProtocol(const char* signature,const char* version)
 		return std::move(matches);
 	}
 	
-status_t
-PluginManager::Impl::SendMessage(const std::string pluginsig, BMessage* message)
+void
+PluginManager::Impl::SendMessage(const std::string pluginsig, const char* protocolSig, BMessage* message)
 {
 	std::cout << "Impl::SendMessage()" << std::endl;
 	// Call its SendMessage function
@@ -210,10 +255,9 @@ PluginManager::Impl::SendMessage(const std::string pluginsig, BMessage* message)
 		if (0 == strcmp(plugin.description.signature, pluginsig.c_str()))
 		{
 			std::cout << "Impl::SendMessage():   matching plugin for protocol" << std::endl;
-			return MessagePlugin(plugin.path, this);
+			MessagePlugin(plugin.path, this, protocolSig, message);
 		}
 	}
-	return B_BAD_PORT_ID;
 }
 	
 // internal methods
@@ -337,10 +381,10 @@ PluginManager::FindForProtocol(const char* signature,const char* version)
 	return fImpl->FindForProtocol(signature,version);
 }
 
-status_t
-PluginManager::SendMessage(const std::string pluginid,BMessage* message)
+void
+PluginManager::SendMessage(const std::string pluginid,const char* protocolSig,BMessage* message)
 {
-	return fImpl->SendMessage(pluginid,message);
+	fImpl->SendMessage(pluginid,protocolSig,message);
 }
 
 const std::vector<std::string>

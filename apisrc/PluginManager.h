@@ -26,7 +26,7 @@ public:
 	virtual								~PluginManager();
 	// TODO move contructor???
 	const 	std::vector<std::string>	FindForProtocol(const char* signature,const char* version);
-			status_t					SendMessage(const std::string pluginid,BMessage* message);
+			void						SendMessage(const std::string pluginid,const char* protocolSig,BMessage* message);
 	const	std::vector<BEntry>			GetAllPluginPaths();
 	const	std::vector<plugin>			GetAllPlugins();
 	const	std::vector<std::string>	GetProblems();
