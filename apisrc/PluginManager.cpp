@@ -225,7 +225,9 @@ PluginManager::Impl::AddDescription(entry_ref path, plugin_descriptor* desc)
 	strcpy(version,desc->version);
 	*/
 	
-	const struct protocol* protocolList = new protocol[desc->count];
+	int size = desc->count;
+	
+	struct protocol protocolList[size];
 	for (int i = 0;i < desc->count;i++) 
 	{
 		char* psig = nullptr;
@@ -238,11 +240,16 @@ PluginManager::Impl::AddDescription(entry_ref path, plugin_descriptor* desc)
 		strcpy(pmaxver,protocolList[i].maxVersion);
 	}
 	
+	struct plugin_descriptor* mypd = new plugin_descriptor(sig.c_str(),summary.c_str(),version.c_str(),desc->count,protocolList);
+	
+	std::cout << "summary: " << mypd->summary << std::endl;
+/*	
 	const int* count = new int(desc->count);
 	std::shared_ptr<struct plugin_descriptor> d = std::make_shared<struct plugin_descriptor>(
 		sig.c_str(),summary.c_str(),version.c_str(),count,protocolList);
 	std::shared_ptr<struct plugin> p = std::make_shared<struct plugin>(std::move(path), std::move(d));
 	plugins.emplace_back(p);
+	*/
 }
 
 const
