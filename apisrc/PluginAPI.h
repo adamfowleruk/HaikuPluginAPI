@@ -16,9 +16,4 @@ struct plugin_descriptor {
 };
 class BMessage;
 
-extern "C" {
-	plugin_descriptor	describe_plugin();
-	void				receive_message(const char* protocol_signature,const char* flattenedMessage); // BMessage allows reply built in
-}
-
 #endif

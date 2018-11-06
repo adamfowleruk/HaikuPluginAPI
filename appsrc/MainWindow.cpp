@@ -8,7 +8,6 @@
 #include <String.h>
 
 #include "../apisrc/PluginManager.h"
-#include "../apisrc/PluginAPI.h"
 #include "../pluginsrc/HaikuProtocol.h"
 #include "../pluginsrc/LimerickProtocol.h"
 
@@ -30,6 +29,8 @@ MainWindow::MainWindow(void)
 	// Normally we'd keep the list, and send introspection messages to each
 	//     For now though, we'll just fetch the first implementation of each
 	std::cout << "Loaded PoemViewer main window" << std::endl;
+    
+    fPluginManager.SetReplyHandler(this);
 	
 	fStringView = new BTextView("poemview");
 	fStringView->SetText("Poem goes here");
@@ -132,7 +133,10 @@ MainWindow::MessageReceived(BMessage *msg)
 		}
 		case M_RECEIVE:
 		{
-			fStringView->SetText(msg->GetString("poem",0));
+            BString* str = new BString();
+            msg->FindString("poem",str);
+            std::cout << "Poem: " << str->String() << std::endl;
+			fStringView->SetText(str->String());
 			break;
 		}
 		default:

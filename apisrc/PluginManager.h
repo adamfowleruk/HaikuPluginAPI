@@ -1,15 +1,17 @@
 #ifndef PLUGINMANAGER_H
 #define PLUGINMANAGER_H
 
+#include "PluginAPI.h"
+
 #include <vector>
 #include <string>
 #include <memory>
 #include <Path.h>
 #include <Entry.h>
-#include "PluginAPI.h"
 
 class BMessage;
 class BEntry;
+class BHandler;
 
 struct plugin
 {
@@ -26,7 +28,8 @@ public:
 	virtual								~PluginManager();
 	// TODO move contructor???
 	const 	std::vector<std::string>	FindForProtocol(const char* signature,const char* version);
-			void						SendMessage(const std::string pluginid,const char* protocolSig,BMessage* message);
+            void                        SetReplyHandler(BHandler* replyHandler);
+            void						SendMessage(const std::string pluginid,const char* protocolSig,BMessage* message);
 	const	std::vector<BEntry>			GetAllPluginPaths();
 	const	std::vector<plugin>			GetAllPlugins();
 	const	std::vector<std::string>	GetProblems();

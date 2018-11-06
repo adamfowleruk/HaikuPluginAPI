@@ -4,6 +4,7 @@ PLATFORM=HaikuGCC4
 SCM=git
 GROUP=Source files
 EXPANDGROUP=yes
+SOURCEFILE=Plugin.h
 SOURCEFILE=PluginAPI.h
 SOURCEFILE=PluginManager.cpp
 DEPENDENCY=PluginManager.h|PluginAPI.h

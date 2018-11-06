@@ -1,4 +1,4 @@
-#include "../apisrc/PluginAPI.h"
+#include "../apisrc/Plugin.h"
 
 #include <Message.h>
 
@@ -27,9 +27,12 @@ PoemManager::~PoemManager()
 void
 PoemManager::MessageReceived(BMessage* message)
 {
-	std::cout << "GetHaikuPlugin::MessageReceived: what: " << message->what << std::endl;
-	std::cout << "GetHaikuPlugin::MessageReceived: M_GET_RANDOM_HAIKU: " << M_GET_RANDOM_HAIKU << std::endl;
-	std::cout << "GetHaikuPlugin::MessageReceived: M_GET_RANDOM_LIMERICK: " << M_GET_RANDOM_LIMERICK << std::endl;
+	std::cout << "GetHaikuPlugin::MessageReceived: what: " << 
+        message->what << std::endl;
+	std::cout << "GetHaikuPlugin::MessageReceived: M_GET_RANDOM_HAIKU: " 
+        << M_GET_RANDOM_HAIKU << std::endl;
+	std::cout << "GetHaikuPlugin::MessageReceived: M_GET_RANDOM_LIMERICK: " 
+        << M_GET_RANDOM_LIMERICK << std::endl;
 	switch(message->what) {
 	case M_GET_RANDOM_HAIKU:
 	case M_GET_RANDOM_LIMERICK:
@@ -38,15 +41,18 @@ PoemManager::MessageReceived(BMessage* message)
 		const char* poem = GetRandom();
 		BMessage* reply = new BMessage(M_RECEIVE);
 		reply->AddString("poem",poem);
-		std::cout << "GetHaikuPlugin::MessageReceived: Sending Poem: " << poem << std::endl;
+		std::cout << "GetHaikuPlugin::MessageReceived: Sending Poem: " 
+            << poem << std::endl;
 		message->SendReply(reply);
-		std::cout << "GetHaikuPlugin::MessageReceived: Message reply sent" << std::endl;
+		std::cout << "GetHaikuPlugin::MessageReceived: Message reply sent" 
+            << std::endl;
 		
 		break;
 	}
 	case M_ADD_HAIKU:
 	{
-		// TODO implement the other function to add a haiku to our list and respond with index
+		// TODO implement the other function to add a haiku to our list 
+        //      and respond with index
 		;
 		break;
 	}
@@ -86,8 +92,9 @@ PoemManager::AddPoem(const char* poem)
 
 
 // NOW DEFINE THE PLUGIN'S HOOKS AND SUPPORTED PROTOCOLS
-// The poem managers would likely be completely different classes in real life
-//     I've used a single class purely as a convenience for myself in this example.
+// The poem managers would likely be completely different classes in 
+//     real life. I've used a single class purely as a convenience for 
+//     myself in this example.
 
 const char* signature = "x.vnd/GetHaikuPlugin";
 
@@ -134,38 +141,41 @@ describe_plugin()
 	//const struct protocol hp = {sig_haikuprotocol, "1.1","1.0","1.1"};
 	//const struct protocol lp = {sig_limerickprotocol, "1.0","1.0","1.0"};
 	static const struct protocol protocols[] = {
-		{sig_haikuprotocol, "1.1","1.0","1.1"},{sig_limerickprotocol, "1.0","1.0","1.0"}
+		{sig_haikuprotocol, "1.1","1.0","1.1"},{sig_limerickprotocol, 
+           "1.0","1.0","1.0"}
 	};
 	const struct plugin_descriptor description = {
 		signature,"Operations on Poems","1.1",
 		2,
 		protocols
 	};
-	std::cout << "first protocol from prot array: " << protocols[0].signature << std::endl;
-	std::cout << "first protocol from description: " << description.protocolList[0].signature << std::endl;
+	std::cout << "GetHaikuPlugin::describe_plugin: first protocol from prot array: " << protocols[0].signature 
+        << std::endl;
+	std::cout << "GetHaikuPlugin::describe_plugin: first protocol from description: " 
+        << description.protocolList[0].signature << std::endl;
 	return description;
 }
 
-extern "C"
 void
-receive_message(const char* protocol,const char* flattenedMessage) 
+receive_message(const char* protocol,BMessage* message) 
 {
-	std::cout << "message_received" << std::endl;
-	BMessage* message = new BMessage();
-	message->Unflatten(flattenedMessage);
 	// This is where the plugin would hand off to
-	//    one or more classes, depending on the list of protocols supported and their handlers
+	//    one or more classes, depending on the list of protocols supported 
+    //    and their handlers
 	
 	if (0 == strcmp(sig_haikuprotocol,protocol))
 	{
-		std::cout << "message_received: Got a haiku request" << std::endl;
-		// we know that the PoemManager instance supports to get random protocol
+		std::cout << "GetHaikuPlugin::message_received: Got a haiku request" << std::endl;
+		// we know that the PoemManager instance supports to get random 
+        // protocol
 		haikus->MessageReceived(message);
 	} else {
 		if (0 == strcmp(sig_limerickprotocol,protocol))
 		{
-			std::cout << "message_received: Got a limerick request" << std::endl;
-			// we know that the LlimerickManager instance supports the add protocol
+			std::cout << "GetHaikuPlugin::message_received: Got a limerick request" 
+                << std::endl;
+			// we know that the LlimerickManager instance supports the add 
+            //      protocol
 			limericks->MessageReceived(message);
 		}
 	}

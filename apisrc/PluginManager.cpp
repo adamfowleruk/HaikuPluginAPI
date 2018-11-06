@@ -5,6 +5,7 @@
 #include <FindDirectory.h>
 #include <Message.h>
 #include <String.h>
+#include <Handler.h>
 
 #include "PluginAPI.h"
 
@@ -15,6 +16,7 @@
 #include <iterator>
 #include <vector>
 #include <iostream>
+#include <functional>
 
 
 
@@ -34,10 +36,13 @@ public:
 	const	std::vector<plugin>			GetAllPlugins();
 	const	std::vector<std::string>	GetProblems();
 			void						AddProblem(std::string problem);
+            void                        SetReplyHandler(BHandler* replyHandler);
+            void                        ReceiveReply(const char* flattenedMessage);
 private:
 			std::vector<plugin>			plugins;
 			std::vector<std::string>	problems;
 			std::vector<BEntry> 		fPluginPaths;
+            BHandler*                   fReplyHandler;
 };
 
 
@@ -65,11 +70,14 @@ IntrospectThread(entry_ref addonRef, PluginManager::Impl* pluginManager)
 				// call add-on code
 				plugin_descriptor description = 
 					(*describe_plugin)(NULL);
-				PRINT(("IntrospectThread: plugin signature: %s\n",description.signature));
-				std::cout << "IntrospectThread: plugin signature: " << description.signature << std::endl;
+				PRINT(("IntrospectThread: plugin signature: %s\n",
+                    description.signature));
+				std::cout << "IntrospectThread: plugin signature: " 
+                    << description.signature << std::endl;
 				
 				// print out first protocol too
-				std::cout << "IntrospectThread:   first protocol sig: " << description.protocolList[0].signature << std::endl;
+				std::cout << "IntrospectThread:   first protocol sig: " 
+                    << description.protocolList[0].signature << std::endl;
 				
 				pluginManager->AddDescription(addonRef,&description);
 				
@@ -104,12 +112,25 @@ DescribePlugin(entry_ref addonRef,PluginManager::Impl* pluginManager)
 	LaunchInNewThread("Add-on", B_NORMAL_PRIORITY, &IntrospectThread, addonRef, pluginManager);
 }
 
+// TODO FIXME: horrible hack for now
+static PluginManager::Impl* replyToManager = nullptr;
+
+static void
+handle_reply(const char* flattenedMessage)
+{
+    replyToManager->ReceiveReply(flattenedMessage);
+}
 
 static int32
 SendThread(entry_ref addonRef, PluginManager::Impl* pluginManager,const char* protocolSig, const char* flattenedMessage)
 {
 	std::cout << "Send Thread" << std::endl;
-	BEntry entry(&addonRef);
+    if (nullptr == replyToManager) 
+    {
+        replyToManager = pluginManager;
+    }
+    
+    BEntry entry(&addonRef);
 	BPath path;
 	status_t result = entry.InitCheck();
 	if (result == B_OK)
@@ -118,18 +139,39 @@ SendThread(entry_ref addonRef, PluginManager::Impl* pluginManager,const char* pr
 	if (result == B_OK) {
 		image_id addonImage = load_add_on(path.Path());
 		if (addonImage >= 0) {
-			void (*receive_message)(const char*, const char*, void*);
-			result = get_image_symbol(addonImage, "receive_message", 2,
-				(void**)&receive_message);
+			void (*receive_message_raw)(const char*, const char*, 
+                void (const char*));
+
+            void (*replyTo)(const char*) = &handle_reply;
+            //void (*replyTo)(const char*) = &(PluginManager::Impl::ReceiveReply);
+            
+            /*
+            void (*replyTo)(const char*) = [pluginManager] -> (
+                const char* flattenedMessage) {
+                    pluginManager->ReceiveReply(flattenedMessage);
+                };
+            */
+            /*
+            std::function<void(const char*)> replyTo(PluginManager::Impl* pm) {
+                return [&](const char* fm) {
+                    pm->ReceiveReply(fm);
+                };
+            };
+            */
+            
+			result = get_image_symbol(addonImage, "receive_message_raw", 
+                3,
+				(void**)&receive_message_raw);
 
 			if (result >= 0) {
 				//std::cout << "SendThread: message what: " << message->what << std::endl;
 				// call add-on code
-					(*receive_message)(protocolSig, flattenedMessage, NULL);
+					(*receive_message_raw)(protocolSig, flattenedMessage, 
+                        replyTo);
 					
 				std::cout << "SendThread: Message Sent" << std::endl;
 
-				unload_add_on(addonImage); // TODO ensure it is safe to remove already (and each time?)
+				//unload_add_on(addonImage); // TODO ensure it is safe to remove already (and each time?)
 				return B_OK;
 			} else
 				PRINT(("SendThread: couldn't find describe_plugin\n"));
@@ -156,7 +198,7 @@ MessagePlugin(entry_ref addonRef, PluginManager::Impl* pluginManager, const char
 {
 	std::cout << "MessagePlugin: what: " << message->what << std::endl;
 	char* flattenedMessage = new char[message->FlattenedSize()];
-	status_t result = message->Flatten(flattenedMessage,message->FlattenedSize());
+	message->Flatten(flattenedMessage,message->FlattenedSize());
 	std::string cc(flattenedMessage);
 	LaunchInNewThread("MessagePlugin::SendMessage",B_NORMAL_PRIORITY, 
 		&SendThread, addonRef, pluginManager, protocolSig, 
@@ -164,7 +206,8 @@ MessagePlugin(entry_ref addonRef, PluginManager::Impl* pluginManager, const char
 }
 
 PluginManager::Impl::Impl(std::vector<std::string> additionalPaths)
-	:fPluginPaths()
+	: fPluginPaths(),
+      fReplyHandler(nullptr)
 {
 	std::cout << "Impl(paths)" << std::endl;
 	for (auto ap: additionalPaths)
@@ -189,7 +232,8 @@ PluginManager::Impl::Impl(std::vector<std::string> additionalPaths)
 }
 
 PluginManager::Impl::Impl()
-	:fPluginPaths()
+	: fPluginPaths(),
+      fReplyHandler(nullptr)
 {	
 	std::cout << "Impl()" << std::endl;
 	// First add standard system paths
@@ -265,6 +309,29 @@ PluginManager::Impl::SendMessage(const std::string pluginsig, const char* protoc
 		}
 	}
 }
+
+void
+PluginManager::Impl::SetReplyHandler(BHandler* replyHandler)
+{
+    fReplyHandler = replyHandler;
+}
+
+void PluginManager::Impl::ReceiveReply(const char* flattenedMessage)
+{
+    
+    std::cout << "PluginManager::Impl::ReceiveReply: reply received "
+        << std::endl;
+    BMessage* msg = new BMessage();
+    msg->Unflatten(flattenedMessage);
+    
+    // now handle it somewhere...
+    if (nullptr != fReplyHandler)
+    {
+        fReplyHandler->Looper()->Lock();
+        fReplyHandler->MessageReceived(msg);
+        fReplyHandler->Looper()->Unlock();
+    }
+}
 	
 // internal methods
 void
@@ -312,7 +379,7 @@ PluginManager::Impl::AddDescription(entry_ref path, plugin_descriptor* desc)
 	// done a deep copy, so a shallow copy now will work find
 	struct plugin_descriptor mypd = {sig.c_str(),summary.c_str(),version.c_str(),
 		size,protocolList};
-	std::cout << "Imple::AddDescription: summary: " << mypd.summary << std::endl;
+	std::cout << "Impl::AddDescription: summary: " << mypd.summary << std::endl;
 	struct plugin plug = {path,mypd};
 	plugins.emplace_back(plug); // shallow copy now fine, as we've allocated everything in our memory space
 /*	
@@ -385,6 +452,12 @@ const std::vector<std::string>
 PluginManager::FindForProtocol(const char* signature,const char* version)
 {
 	return fImpl->FindForProtocol(signature,version);
+}
+
+void
+PluginManager::SetReplyHandler(BHandler* replyHandler)
+{
+    fImpl->SetReplyHandler(replyHandler);
 }
 
 void
