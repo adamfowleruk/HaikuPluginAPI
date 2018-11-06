@@ -44,11 +44,20 @@ public:
     void MessageReceived(BMessage* message) {
         std::cout << "ReplyHandler::ReceiveMessage has reply to send" 
             << std::endl;
+        std::cout << "BMessage reply being sent:-" << std::endl;
+        message->PrintToStream();
         char* flattenedMessage = new char[message->FlattenedSize()];
-        message->Flatten(flattenedMessage,message->FlattenedSize());
-        std::string cc(flattenedMessage);
+        status_t flatStatus = message->Flatten(flattenedMessage,message->FlattenedSize());
+        if (B_OK != flatStatus)
+        {
+            std::cout << "ReplyHandler: Reply Flatten returned NOT OK!!!" << std::endl;
+        }
+        //std::string cc(flattenedMessage);
+        
+        std::cout << "ReplyHandler: raw flattened message going over boundary: "
+            << flattenedMessage << std::endl;
 	
-        fReplyFunc(cc.c_str());
+        fReplyFunc(flattenedMessage);
     };
 private:
     void (*fReplyFunc)(const char*);
@@ -179,6 +188,9 @@ extern "C" {
         // handles the message packing, unpacking, and replies. Calls above
         // unpack message
         std::cout << "Plugin.h: message_received" << std::endl;
+        
+        std::cout << "Plugin.h: flat message: " << flattenedMessage << std::endl;
+        
         BMessage* message = new BMessage();
         message->Unflatten(flattenedMessage);
         // set up reply handler (Messenger)

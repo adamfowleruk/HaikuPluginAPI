@@ -43,6 +43,8 @@ PoemManager::MessageReceived(BMessage* message)
 		reply->AddString("poem",poem);
 		std::cout << "GetHaikuPlugin::MessageReceived: Sending Poem: " 
             << poem << std::endl;
+        std::cout << "BMessage reply output:-" << std::endl;
+        reply->PrintToStream();
 		message->SendReply(reply);
 		std::cout << "GetHaikuPlugin::MessageReceived: Message reply sent" 
             << std::endl;

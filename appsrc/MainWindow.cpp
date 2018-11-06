@@ -136,6 +136,8 @@ MainWindow::MessageReceived(BMessage *msg)
             BString* str = new BString();
             msg->FindString("poem",str);
             std::cout << "Poem: " << str->String() << std::endl;
+            std::cout << "BMessage output:-" << std::endl;
+            msg->PrintToStream();
 			fStringView->SetText(str->String());
 			break;
 		}

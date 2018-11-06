@@ -118,6 +118,14 @@ static PluginManager::Impl* replyToManager = nullptr;
 static void
 handle_reply(const char* flattenedMessage)
 {
+    std::cout << "handle_reply: raw flattened reply: " 
+        << flattenedMessage << std::endl;
+
+    BMessage* msg = new BMessage();
+    msg->Unflatten(flattenedMessage);
+    std::cout << "handle_reply: BMessage output:-" << std::endl;
+    msg->PrintToStream();
+    
     replyToManager->ReceiveReply(flattenedMessage);
 }
 
@@ -198,8 +206,12 @@ MessagePlugin(entry_ref addonRef, PluginManager::Impl* pluginManager, const char
 {
 	std::cout << "MessagePlugin: what: " << message->what << std::endl;
 	char* flattenedMessage = new char[message->FlattenedSize()];
-	message->Flatten(flattenedMessage,message->FlattenedSize());
-	std::string cc(flattenedMessage);
+	status_t flatResult = message->Flatten(flattenedMessage,message->FlattenedSize());
+    if (B_OK != flatResult)
+    {
+        std::cout << "MessagePlugin: Flatten result was NOT OK" << std::endl;
+    }
+    std::string cc(flattenedMessage);
 	LaunchInNewThread("MessagePlugin::SendMessage",B_NORMAL_PRIORITY, 
 		&SendThread, addonRef, pluginManager, protocolSig, 
 		cc.c_str());
@@ -322,7 +334,16 @@ void PluginManager::Impl::ReceiveReply(const char* flattenedMessage)
     std::cout << "PluginManager::Impl::ReceiveReply: reply received "
         << std::endl;
     BMessage* msg = new BMessage();
-    msg->Unflatten(flattenedMessage);
+    status_t flatResult = msg->Unflatten(flattenedMessage);
+    if (B_OK != flatResult)
+    {
+        std::cout << 
+            "PluginManager::Impl::ReceiveReply: Unflatten result was NOT OK" 
+            << std::endl;
+    }
+    
+    std::cout << "BMessage output:-" << std::endl;
+    msg->PrintToStream();
     
     // now handle it somewhere...
     if (nullptr != fReplyHandler)
